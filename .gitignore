@@ -1,0 +1,112 @@
+# Terraform files
+terraform/.terraform/
+terraform/.terraform.lock.hcl
+terraform/*.tfstate
+terraform/*.tfstate.*
+terraform/crash.log
+terraform/crash.*.log
+terraform/override.tf
+terraform/override.tf.json
+terraform/*_override.tf
+terraform/*_override.tf.json
+terraform/.terraformrc
+terraform/terraform.rc
+terraform/.DS_Store
+terraform/terraform.tfvars
+terraform/terraform.tfvars.json
+terraform/.terraform.tfvars
+terraform/.terraform.tfvars.json
+terraform/lambda_package/
+terraform/modules/lambda-athena-query/lambda_package/
+terraform/modules/lambda-athena-query/lambda_function.zip
+terraform/**/*.zip
+
+# Terraform lock files
+.terraform.lock.hcl
+**/.terraform.lock.hcl
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+*.iml
+
+# Python files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Logs
+*.log
+logs/
+
+# Local files
+local/
+*.local
+.env.local
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# VPC Flow Logs data (keep sample files but ignore large datasets)
+vpc-flow-logs-datahub-example/*.csv
+!vpc-flow-logs-datahub-example/sample_1.csv
+!vpc-flow-logs-datahub-example/sample_1_formatted.csv
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+
+# AWS credentials and secrets
+.aws/
+*.pem
+*.key
+*.pub
+credentials
+.credentials
+
+# Sensitive files
+secrets.json
+.secrets
+*.secret
+api_keys.txt
+tokens.txt
+
+# Build artifacts
+*.zip
+dist/
+build/
+
+# Response files from testing
+response.json
+*.response

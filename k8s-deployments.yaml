@@ -1,0 +1,256 @@
+---
+# Namespace for traffic generation
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: nat-gateway-test
+
+---
+# ConfigMap for traffic generation scripts
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: traffic-generator-scripts
+  namespace: nat-gateway-test
+data:
+  generate-http-traffic.sh: |
+    #!/bin/bash
+    echo "Starting HTTP traffic generation..."
+    while true; do
+      # Generate traffic to various external endpoints
+      curl -s -m 5 https://www.google.com > /dev/null 2>&1
+      curl -s -m 5 https://www.amazon.com > /dev/null 2>&1
+      curl -s -m 5 https://www.github.com > /dev/null 2>&1
+      curl -s -m 5 https://www.cloudflare.com > /dev/null 2>&1
+      
+      # Random sleep between 1-5 seconds
+      sleep $((RANDOM % 5 + 1))
+    done
+
+  generate-dns-traffic.sh: |
+    #!/bin/bash
+    echo "Starting DNS traffic generation..."
+    DOMAINS=(
+      "google.com"
+      "amazon.com"
+      "github.com"
+      "cloudflare.com"
+      "aws.amazon.com"
+      "kubernetes.io"
+      "docker.com"
+    )
+    
+    while true; do
+      for domain in "${DOMAINS[@]}"; do
+        nslookup "$domain" > /dev/null 2>&1
+        sleep 2
+      done
+    done
+
+  generate-tcp-traffic.sh: |
+    #!/bin/bash
+    echo "Starting TCP traffic generation..."
+    while true; do
+      # Generate TCP connections to various ports
+      timeout 5 bash -c 'cat < /dev/null > /dev/tcp/8.8.8.8/53' 2>/dev/null
+      timeout 5 bash -c 'cat < /dev/null > /dev/tcp/1.1.1.1/443' 2>/dev/null
+      timeout 5 bash -c 'cat < /dev/null > /dev/tcp/208.67.222.222/443' 2>/dev/null
+      
+      sleep 3
+    done
+
+---
+# HTTP Traffic Generator Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: http-traffic-generator
+  namespace: nat-gateway-test
+  labels:
+    app: http-traffic-generator
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: http-traffic-generator
+  template:
+    metadata:
+      labels:
+        app: http-traffic-generator
+    spec:
+      containers:
+      - name: traffic-generator
+        image: curlimages/curl:latest
+        command: ["/bin/sh"]
+        args:
+          - -c
+          - |
+            echo "Starting HTTP traffic generation..."
+            while true; do
+              curl -s -m 5 https://www.google.com > /dev/null 2>&1
+              curl -s -m 5 https://www.amazon.com > /dev/null 2>&1
+              curl -s -m 5 https://www.github.com > /dev/null 2>&1
+              curl -s -m 5 https://www.cloudflare.com > /dev/null 2>&1
+              curl -s -m 5 https://www.wikipedia.org > /dev/null 2>&1
+              sleep $((RANDOM % 5 + 1))
+            done
+        resources:
+          requests:
+            cpu: 100m
+            memory: 64Mi
+          limits:
+            cpu: 200m
+            memory: 128Mi
+      restartPolicy: Always
+
+---
+# DNS Traffic Generator Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dns-traffic-generator
+  namespace: nat-gateway-test
+  labels:
+    app: dns-traffic-generator
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: dns-traffic-generator
+  template:
+    metadata:
+      labels:
+        app: dns-traffic-generator
+    spec:
+      containers:
+      - name: traffic-generator
+        image: alpine:latest
+        command: ["/bin/sh"]
+        args:
+          - -c
+          - |
+            apk add --no-cache bind-tools
+            echo "Starting DNS traffic generation..."
+            DOMAINS="google.com amazon.com github.com cloudflare.com aws.amazon.com kubernetes.io docker.com"
+            while true; do
+              for domain in $DOMAINS; do
+                nslookup "$domain" > /dev/null 2>&1
+                sleep 1
+              done
+            done
+        resources:
+          requests:
+            cpu: 50m
+            memory: 32Mi
+          limits:
+            cpu: 100m
+            memory: 64Mi
+      restartPolicy: Always
+
+---
+# TCP Traffic Generator Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tcp-traffic-generator
+  namespace: nat-gateway-test
+  labels:
+    app: tcp-traffic-generator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: tcp-traffic-generator
+  template:
+    metadata:
+      labels:
+        app: tcp-traffic-generator
+    spec:
+      containers:
+      - name: traffic-generator
+        image: alpine:latest
+        command: ["/bin/sh"]
+        args:
+          - -c
+          - |
+            echo "Starting TCP traffic generation..."
+            while true; do
+              timeout 5 sh -c 'cat < /dev/null > /dev/tcp/8.8.8.8/53' 2>/dev/null
+              timeout 5 sh -c 'cat < /dev/null > /dev/tcp/1.1.1.1/443' 2>/dev/null
+              timeout 5 sh -c 'cat < /dev/null > /dev/tcp/208.67.222.222/443' 2>/dev/null
+              sleep 3
+            done
+        resources:
+          requests:
+            cpu: 50m
+            memory: 32Mi
+          limits:
+            cpu: 100m
+            memory: 64Mi
+      restartPolicy: Always
+
+---
+# High-Volume Traffic Generator (optional - use for stress testing)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: high-volume-traffic-generator
+  namespace: nat-gateway-test
+  labels:
+    app: high-volume-traffic-generator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: high-volume-traffic-generator
+  template:
+    metadata:
+      labels:
+        app: high-volume-traffic-generator
+    spec:
+      containers:
+      - name: traffic-generator
+        image: curlimages/curl:latest
+        command: ["/bin/sh"]
+        args:
+          - -c
+          - |
+            echo "Starting high-volume traffic generation..."
+            for i in {1..10}; do
+              (
+                while true; do
+                  curl -s -m 3 https://www.google.com > /dev/null 2>&1 &
+                  curl -s -m 3 https://www.amazon.com > /dev/null 2>&1 &
+                  curl -s -m 3 https://www.github.com > /dev/null 2>&1 &
+                  wait
+                  sleep 1
+                done
+              ) &
+            done
+            wait
+        resources:
+          requests:
+            cpu: 500m
+            memory: 256Mi
+          limits:
+            cpu: 1000m
+            memory: 512Mi
+      restartPolicy: Always
+
+---
+# Service Monitor for Prometheus (optional)
+apiVersion: v1
+kind: Service
+metadata:
+  name: traffic-generator-metrics
+  namespace: nat-gateway-test
+  labels:
+    app: traffic-generator
+spec:
+  selector:
+    app: http-traffic-generator
+  ports:
+  - name: metrics
+    port: 8080
+    targetPort: 8080
+  type: ClusterIP

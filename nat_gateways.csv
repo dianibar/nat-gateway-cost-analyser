@@ -1,0 +1,4 @@
+NAT_Gateway_ID,NAT_Gateway_Name,Interface_ID,Private_IP,Subnet_ID,Availability_Zone,State
+nat-00bafb9014bf0363f,nat-gateway-analysis-nat-subnet-0d581480c3c2781b5,eni-0d2c4f2167d4beae0,10.0.14.240,subnet-0d581480c3c2781b5,us-east-1a,available
+nat-0f007934e7f40987a,nat-gateway-analysis-nat-subnet-05ca5fe5efb698d34,eni-084e99d8ed4147a72,10.0.37.98,subnet-05ca5fe5efb698d34,us-east-1c,available
+nat-07d43050cb5744943,nat-gateway-analysis-nat-subnet-0d144251dd0f47895,eni-01a221edbbbaf005c,10.0.24.48,subnet-0d144251dd0f47895,us-east-1b,available
