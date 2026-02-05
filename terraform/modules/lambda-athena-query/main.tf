@@ -141,12 +141,14 @@ resource "aws_lambda_function" "athena_query" {
 
   environment {
     variables = {
-      ATHENA_DATABASE        = var.athena_database
-      ATHENA_WORKGROUP       = var.athena_workgroup
-      ATHENA_RESULTS_BUCKET  = var.athena_results_bucket
-      PUBLIC_IP_QUERY        = var.public_ip_query
-      PRIVATE_IP_QUERY       = var.private_ip_query
-      DATAHUB_SECRET_NAME    = aws_secretsmanager_secret.datahub_api.name
+      ATHENA_DATABASE              = var.athena_database
+      ATHENA_WORKGROUP             = var.athena_workgroup
+      ATHENA_RESULTS_BUCKET        = var.athena_results_bucket
+      PUBLIC_IP_QUERY              = var.public_ip_query
+      PRIVATE_IP_QUERY             = var.private_ip_query
+      INGRESS_PRIVATE_IP_QUERY     = var.ingress_private_ip_query
+      EGRESS_PUBLIC_IP_QUERY       = var.egress_public_ip_query
+      DATAHUB_SECRET_NAME          = aws_secretsmanager_secret.datahub_api.name
     }
   }
 

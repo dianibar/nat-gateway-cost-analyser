@@ -50,13 +50,15 @@ module "athena_analytics" {
 module "lambda_athena_query" {
   source = "./modules/lambda-athena-query"
 
-  cluster_name            = var.cluster_name
-  athena_results_bucket   = module.athena_analytics.athena_results_bucket
-  athena_database         = module.athena_analytics.athena_database_name
-  athena_workgroup        = module.athena_analytics.athena_workgroup_name
-  public_ip_query         = file("${path.module}/../queries/public_ip_traffic.sql")
-  private_ip_query        = file("${path.module}/../queries/private_ip_traffic.sql")
-  datahub_api_url         = var.datahub_api_url
-  datahub_api_key         = var.datahub_api_key
-  datahub_customer_context = var.datahub_customer_context
+  cluster_name                    = var.cluster_name
+  athena_results_bucket           = module.athena_analytics.athena_results_bucket
+  athena_database                 = module.athena_analytics.athena_database_name
+  athena_workgroup                = module.athena_analytics.athena_workgroup_name
+  public_ip_query                 = file("${path.module}/../queries/public_ip_traffic.sql")
+  private_ip_query                = file("${path.module}/../queries/private_ip_traffic.sql")
+  ingress_private_ip_query        = file("${path.module}/../queries/ingress_private_ip_traffic.sql")
+  egress_public_ip_query          = file("${path.module}/../queries/egress_public_ip_traffic.sql")
+  datahub_api_url                 = var.datahub_api_url
+  datahub_api_key                 = var.datahub_api_key
+  datahub_customer_context        = var.datahub_customer_context
 }

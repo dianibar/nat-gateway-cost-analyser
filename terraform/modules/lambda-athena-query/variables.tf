@@ -40,6 +40,16 @@ variable "private_ip_query" {
   type        = string
 }
 
+variable "ingress_private_ip_query" {
+  description = "Athena query for ingress private IP traffic analysis"
+  type        = string
+}
+
+variable "egress_public_ip_query" {
+  description = "Athena query for egress public IP traffic analysis"
+  type        = string
+}
+
 variable "datahub_api_url" {
   description = "DataHub API URL"
   type        = string

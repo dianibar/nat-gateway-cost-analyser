@@ -27,7 +27,7 @@ def lambda_handler(event, context):
         today = datetime.now()
         year = "2026"#today.strftime('%Y')
         month = "2"#today.strftime('%m')
-        day = "1"#today.strftime('%d')
+        day = "2"#today.strftime('%d')
         
         print(f"\n{'='*80}")
         print(f"Executing Athena Queries for {year}-{month}-{day}")
@@ -36,7 +36,7 @@ def lambda_handler(event, context):
         # Get DoitHub API credentials
         doithub_config = get_doithub_credentials()
         
-        # Execute both queries
+        # Execute all four queries
         results_public = execute_query_and_print(
             query_type='public',
             year=year,
@@ -51,27 +51,62 @@ def lambda_handler(event, context):
             day=day
         )
         
+        results_ingress_private = execute_query_and_print(
+            query_type='ingress_private',
+            year=year,
+            month=month,
+            day=day
+        )
+        
+        results_egress_public = execute_query_and_print(
+            query_type='egress_public',
+            year=year,
+            month=month,
+            day=day
+        )
+        
         # Send results to DoitHub
         print(f"\n{'-'*80}")
         print("Sending results to DoitHub API")
         print(f"{'-'*80}\n")
         
+        # Send first batch (queries 1 & 2) - Summary
+        print("Batch 1: NAT Gateway usage summary (queries 1 & 2)")
         send_to_doithub(
             doithub_config=doithub_config,
-            public_results=results_public,
-            private_results=results_private,
-            date=f'{year}-{month}-{day}'
+            results=[results_public, results_private],
+            date=f'{year}-{month}-{day}',
+            provider='NAT Gateway usage summary'
+        )
+        
+        # Send second batch (queries 3 & 4) - Top
+        print("\nBatch 2: NAT Gateway usage top (queries 3 & 4)")
+        send_to_doithub(
+            doithub_config=doithub_config,
+            results=[results_ingress_private, results_egress_public],
+            date=f'{year}-{month}-{day}',
+            provider='Nat Gateway usage top'
         )
         
         return {
             'statusCode': 200,
             'body': json.dumps({
-                'message': 'Both queries executed and results sent to DoitHub',
+                'message': 'All queries executed and results sent to DoitHub in 2 batches',
                 'date': f'{year}-{month}-{day}',
-                'publicIPRowCount': results_public['rowCount'],
-                'privateIPRowCount': results_private['rowCount'],
-                'publicIPQueryId': results_public['queryExecutionId'],
-                'privateIPQueryId': results_private['queryExecutionId']
+                'batch1': {
+                    'provider': 'NAT Gateway usage summary',
+                    'publicIPRowCount': results_public['rowCount'],
+                    'privateIPRowCount': results_private['rowCount'],
+                    'publicIPQueryId': results_public['queryExecutionId'],
+                    'privateIPQueryId': results_private['queryExecutionId']
+                },
+                'batch2': {
+                    'provider': 'Nat Gateway usage top',
+                    'ingressPrivateIPRowCount': results_ingress_private['rowCount'],
+                    'egressPublicIPRowCount': results_egress_public['rowCount'],
+                    'ingressPrivateIPQueryId': results_ingress_private['queryExecutionId'],
+                    'egressPublicIPQueryId': results_egress_public['queryExecutionId']
+                }
             })
         }
     
@@ -108,7 +143,7 @@ def get_doithub_credentials():
         raise
 
 
-def send_to_doithub(doithub_config, public_results, private_results, date):
+def send_to_doithub(doithub_config, results, date, provider):
     """Send query results to DoitHub API in the required format"""
     
     try:
@@ -119,19 +154,15 @@ def send_to_doithub(doithub_config, public_results, private_results, date):
         if not all([api_url, api_key, customer_context]):
             raise Exception('Missing required DoitHub configuration')
         
-        # Combine results from both queries
-        all_results = []
+        # Combine results from all queries in this batch
+        all_events_data = []
         
-        # Add public IP results
-        if public_results['data']:
-            all_results.extend(public_results['data'])
-        
-        # Add private IP results
-        if private_results['data']:
-            all_results.extend(private_results['data'])
+        for result in results:
+            if result['data']:
+                all_events_data.extend(result['data'])
         
         # Convert results to DoitHub event format
-        events = convert_to_doithub_events(all_results, public_results['header'], date)
+        events = convert_to_doithub_events(all_events_data, results[0]['header'], date, provider)
         
         # Prepare payload
         payload = {
@@ -148,6 +179,7 @@ def send_to_doithub(doithub_config, public_results, private_results, date):
         # Add customer context to URL
         url = f"{api_url}?customerContext={customer_context}"
         
+        print(f"Provider: {provider}")
         print(f"Sending data to: {api_url}")
         print(f"Number of events: {len(events)}")
         print(f"Payload size: {len(json.dumps(payload))} bytes")
@@ -174,67 +206,104 @@ def send_to_doithub(doithub_config, public_results, private_results, date):
         raise
 
 
-def convert_to_doithub_events(results, header, date):
+def convert_to_doithub_events(results, header, date, provider):
     """Convert query results to DoitHub event format"""
     
     events = []
     
-    # Create a mapping of column names to indices
-    col_map = {col.lower(): idx for idx, col in enumerate(header)}
+    # Create a mapping of column names to indices (case-insensitive)
+    col_map = {}
+    for idx, col_name in enumerate(header):
+        col_map[col_name.lower()] = idx
     
     # Get current timestamp in RFC 3339/ISO 8601 format: YYYY-MM-DDTHH:MM:SSZ
     current_timestamp = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
     
+    # Check if this is a "top" provider (Batch 2) which includes dstaddr
+    is_top_provider = 'top' in provider.lower()
+    
     for row in results:
         try:
-            # Extract values from row
-            account_id = row[col_map.get('account_id', 0)] if 'account_id' in col_map else ''
-            srcaddr = row[col_map.get('srcaddr', 1)] if 'srcaddr' in col_map else ''
-            flow_direction = row[col_map.get('flow_direction', 2)] if 'flow_direction' in col_map else ''
-            nat_gateway_id = row[col_map.get('nat_gateway_id', 3)] if 'nat_gateway_id' in col_map else ''
-            availability_zone = row[col_map.get('availability_zone', 4)] if 'availability_zone' in col_map else ''
-            usage_gb = float(row[col_map.get('usage_gb', 5)]) if 'usage_gb' in col_map else 0.0
-            cost_usd = float(row[col_map.get('cost_usd', 6)]) if 'cost_usd' in col_map else 0.0
+            # Extract values from row using column mapping
+            account_id = row[col_map.get('account_id')] if 'account_id' in col_map else ''
+            
+            # Handle both 'srcaddr' and 'nat_private_ip' column names
+            srcaddr = row[col_map.get('srcaddr')] if 'srcaddr' in col_map else ''
+            if not srcaddr and 'nat_private_ip' in col_map:
+                srcaddr = row[col_map.get('nat_private_ip')]
+            
+            flow_direction = row[col_map.get('flow_direction')] if 'flow_direction' in col_map else ''
+            nat_gateway_id = row[col_map.get('nat_gateway_id')] if 'nat_gateway_id' in col_map else ''
+            availability_zone = row[col_map.get('availability_zone')] if 'availability_zone' in col_map else ''
+            
+            # Get dstaddr if available (for Batch 2)
+            dstaddr = row[col_map.get('dstaddr')] if 'dstaddr' in col_map else ''
+            
+            # Convert numeric fields safely
+            try:
+                usage_gb = float(row[col_map.get('usage_gb')]) if 'usage_gb' in col_map else 0.0
+            except (ValueError, TypeError):
+                usage_gb = 0.0
+            
+            try:
+                cost_usd = float(row[col_map.get('cost_usd')]) if 'cost_usd' in col_map else 0.0
+            except (ValueError, TypeError):
+                cost_usd = 0.0
             
             # Generate UUID for event ID
             event_id = str(uuid.uuid4())
             
+            # Build dimensions based on provider type
+            dimensions = [
+                {
+                    'key': 'billing_account_id',
+                    'type': 'fixed',
+                    'value': account_id
+                },
+                {
+                    'key': 'nat_gateway_id',
+                    'type': 'label',
+                    'value': nat_gateway_id
+                },
+                {
+                    'key': 'availability_zone',
+                    'type': 'label',
+                    'value': availability_zone
+                },
+                {
+                    'key': 'flow-direction',
+                    'type': 'label',
+                    'value': flow_direction
+                },
+                {
+                    'key': 'source_ip',
+                    'type': 'label',
+                    'value': srcaddr
+                }
+            ]
+            
+            # Add dstaddr for Batch 2 (top provider)
+            if is_top_provider and dstaddr:
+                dimensions.append({
+                    'key': 'destination_ip',
+                    'type': 'label',
+                    'value': dstaddr
+                })
+            
             # Create event in DoitHub format
             event = {
-                'provider': 'NAT Gateway usage',
+                'provider': provider,
                 'id': event_id,
-                'dimensions': [
-                    {
-                        'key': 'billing_account_id',
-                        'type': 'fixed',
-                        'value': account_id
-                    },
-                    {
-                        'key': 'nat_gateway_id',
-                        'type': 'label',
-                        'value': nat_gateway_id
-                    },
-                    {
-                        'key': 'availability_zone',
-                        'type': 'label',
-                        'value': availability_zone
-                    },
-                    {
-                        'key': 'flow-direction',
-                        'type': 'label',
-                        'value': flow_direction
-                    },
-                    {
-                        'key': 'source_ip',
-                        'type': 'label',
-                        'value': srcaddr
-                    }
-                ],
+                'dimensions': dimensions,
                 'time': current_timestamp,
                 'metrics': [
                     {
-                        'usage_gb': usage_gb,
-                        'cost_usd': cost_usd
+                        'value': usage_gb,
+                        'type': 'usage_gb'
+                    },
+                    {
+                        'value': cost_usd,
+                        'type': 'cost_usd'
                     }
                 ]
             }
@@ -244,6 +313,8 @@ def convert_to_doithub_events(results, header, date):
         
         except Exception as e:
             print(f"Warning: Failed to convert row to event: {str(e)}")
+            print(f"Row data: {row}")
+            print(f"Column mapping: {col_map}")
             continue
     
     return events
@@ -256,10 +327,18 @@ def execute_query_and_print(query_type, year, month, day):
         # Get query from environment variables
         if query_type == 'public':
             query = os.environ.get('PUBLIC_IP_QUERY')
-            title = "PUBLIC IP TRAFFIC ANALYSIS"
-        else:
+            title = "PUBLIC IP TRAFFIC ANALYSIS (EGRESS)"
+        elif query_type == 'private':
             query = os.environ.get('PRIVATE_IP_QUERY')
-            title = "PRIVATE IP TRAFFIC ANALYSIS"
+            title = "PRIVATE IP TRAFFIC ANALYSIS (INGRESS)"
+        elif query_type == 'ingress_private':
+            query = os.environ.get('INGRESS_PRIVATE_IP_QUERY')
+            title = "INGRESS PRIVATE IP TRAFFIC ANALYSIS"
+        elif query_type == 'egress_public':
+            query = os.environ.get('EGRESS_PUBLIC_IP_QUERY')
+            title = "EGRESS PUBLIC IP TRAFFIC ANALYSIS"
+        else:
+            raise Exception(f'Unknown query type: {query_type}')
         
         if not query:
             raise Exception(f'{query_type} query not found in environment')
