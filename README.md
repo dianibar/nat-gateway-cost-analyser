@@ -11,35 +11,35 @@ This diagram shows how the EKS cluster generates traffic through NAT Gateways fo
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                         AWS VPC (10.0.0.0/16)                   │
-│                                                                   │
+│                                                                 │
 │  ┌──────────────────────────────────────────────────────────┐   │
-│  │                    EKS Cluster                            │   │
+│  │                    EKS Cluster                           │   │
 │  │  ┌─────────────────────────────────────────────────────┐ │   │
 │  │  │         Private Subnets (3 AZs)                     │ │   │
-│  │  │  ┌──────────────┐  ┌──────────────┐  ┌──────────┐  │ │   │
-│  │  │  │ Worker Nodes │  │ Worker Nodes │  │ Worker   │  │ │   │
-│  │  │  │   (AZ-1a)    │  │   (AZ-1b)    │  │ Nodes    │  │ │   │
-│  │  │  │              │  │              │  │ (AZ-1c)  │  │ │   │
-│  │  │  │ ┌──────────┐ │  │ ┌──────────┐ │  │ ┌──────┐ │  │ │   │
-│  │  │  │ │HTTP Gen  │ │  │ │DNS Gen   │ │  │ │TCP   │ │  │ │   │
-│  │  │  │ │Traffic   │ │  │ │Traffic   │ │  │ │Gen   │ │  │ │   │
-│  │  │  │ │Generator │ │  │ │Generator │ │  │ │      │ │  │ │   │
-│  │  │  │ └──────────┘ │  │ └──────────┘ │  │ └──────┘ │  │ │   │
-│  │  │  └──────────────┘  └──────────────┘  └──────────┘  │ │   │
+│  │  │  ┌──────────────┐  ┌──────────────┐  ┌──────────┐   │ │   │
+│  │  │  │ Worker Nodes │  │ Worker Nodes │  │ Worker   │   │ │   │
+│  │  │  │   (AZ-1a)    │  │   (AZ-1b)    │  │ Nodes    │   │ │   │
+│  │  │  │              │  │              │  │ (AZ-1c)  │   │ │   │
+│  │  │  │ ┌──────────┐ │  │ ┌──────────┐ │  │ ┌──────┐ │   │ │   │
+│  │  │  │ │HTTP Gen  │ │  │ │DNS Gen   │ │  │ │TCP   │ │   │ │   │
+│  │  │  │ │Traffic   │ │  │ │Traffic   │ │  │ │Gen   │ │   │ │   │
+│  │  │  │ │Generator │ │  │ │Generator │ │  │ │      │ │   │ │   │
+│  │  │  │ └──────────┘ │  │ └──────────┘ │  │ └──────┘ │   │ │   │
+│  │  │  └──────────────┘  └──────────────┘  └──────────┘   │ │   │
 │  │  └─────────────────────────────────────────────────────┘ │   │
 │  └──────────────────────────────────────────────────────────┘   │
-│                              │                                    │
-│                              ▼                                    │
+│                              │                                  │
+│                              ▼                                  │
 │  ┌──────────────────────────────────────────────────────────┐   │
 │  │              Public Subnets (3 AZs)                      │   │
-│  │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐   │   │
-│  │  │ NAT Gateway  │  │ NAT Gateway  │  │ NAT Gateway  │   │   │
-│  │  │   (AZ-1a)    │  │   (AZ-1b)    │  │   (AZ-1c)    │   │   │
-│  │  │ EIP: xxx.xxx │  │ EIP: xxx.xxx │  │ EIP: xxx.xxx │   │   │
-│  │  └──────────────┘  └──────────────┘  └──────────────┘   │   │
+│  │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐    │   │
+│  │  │ NAT Gateway  │  │ NAT Gateway  │  │ NAT Gateway  │    │   │
+│  │  │   (AZ-1a)    │  │   (AZ-1b)    │  │   (AZ-1c)    │    │   │
+│  │  │ EIP: xxx.xxx │  │ EIP: xxx.xxx │  │ EIP: xxx.xxx │    │   │
+│  │  └──────────────┘  └──────────────┘  └──────────────┘    │   │
 │  └──────────────────────────────────────────────────────────┘   │
-│                              │                                    │
-└──────────────────────────────┼────────────────────────────────────┘
+│                              │                                  │
+└──────────────────────────────┼──────────────────────────────────┘
                                │
                                ▼
                     ┌──────────────────────┐
@@ -69,89 +69,89 @@ This diagram shows how traffic data flows through the analysis pipeline:
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                    Data Collection Layer                         │
-│                                                                   │
+│                    Data Collection Layer                        │
+│                                                                 │
 │  ┌──────────────────────────────────────────────────────────┐   │
 │  │              VPC Flow Logs                               │   │
 │  │  • Captures all network traffic                          │   │
-│  │  • Records: srcaddr, dstaddr, bytes, action, etc.       │   │
-│  │  • Partitioned by: year/month/day/hour                  │   │
+│  │  • Records: srcaddr, dstaddr, bytes, action, etc.        │   │
+│  │  • Partitioned by: year/month/day/hour                   │   │
 │  └──────────────────────────────────────────────────────────┘   │
-│                              │                                    │
-│                              ▼                                    │
+│                              │                                  │
+│                              ▼                                  │
 │  ┌──────────────────────────────────────────────────────────┐   │
-│  │         S3 Bucket (VPC Flow Logs Storage)               │   │
-│  │  s3://nat-gateway-analysis-vpc-flow-logs-<account-id>   │   │
-│  │  └─ AWSLogs/<account-id>/vpcflowlogs/<region>/          │   │
-│  │     └─ <year>/<month>/<day>/<hour>/*.log                │   │
+│  │         S3 Bucket (VPC Flow Logs Storage)                │   │
+│  │  s3://nat-gateway-analysis-vpc-flow-logs-<account-id>    │   │
+│  │  └─ AWSLogs/<account-id>/vpcflowlogs/<region>/           │   │
+│  │     └─ <year>/<month>/<day>/<hour>/*.log                 │   │
 │  └──────────────────────────────────────────────────────────┘   │
-│                              │                                    │
-└──────────────────────────────┼────────────────────────────────────┘
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
                                │
-┌──────────────────────────────┼────────────────────────────────────┐
-│                    Analysis Layer                                 │
-│                              │                                    │
-│                              ▼                                    │
+┌──────────────────────────────▼──────────────────────────────────┐
+│                    Analysis Layer                               │
+│                                                                 │
+│                                                                 │
 │  ┌──────────────────────────────────────────────────────────┐   │
 │  │         AWS Athena                                       │   │
-│  │  • Queries VPC Flow Logs in S3                          │   │
-│  │  • Joins with NAT Gateway metadata                      │   │
-│  │  • Calculates usage (GB) and cost (USD)                 │   │
-│  │  • Executes 4 parameterized queries:                    │   │
-│  │    1. Public IP traffic (ingress)                       │   │
-│  │    2. Private IP traffic (ingress)                      │   │
-│  │    3. Ingress private IP with destination tracking      │   │
-│  │    4. Egress public IP with destination tracking        │   │
+│  │  • Queries VPC Flow Logs in S3                           │   │
+│  │  • Joins with NAT Gateway metadata                       │   │
+│  │  • Calculates usage (GB) and cost (USD)                  │   │
+│  │  • Executes 4 parameterized queries:                     │   │
+│  │    1. Public IP traffic (ingress)                        │   │
+│  │    2. Private IP traffic (ingress)                       │   │
+│  │    3. Ingress private IP with destination tracking       │   │
+│  │    4. Egress public IP with destination tracking         │   │
 │  └──────────────────────────────────────────────────────────┘   │
-│                              │                                    │
-│                              ▼                                    │
+│                              │                                  │
+│                              ▼                                  │
 │  ┌──────────────────────────────────────────────────────────┐   │
-│  │    AWS Lambda (lambda-athena-query)                     │   │
-│  │  • Triggered on schedule (CloudWatch Events)            │   │
-│  │  • Executes all 4 Athena queries                        │   │
-│  │  • Retrieves results from Athena                        │   │
-│  │  • Formats data for DoitHub API                         │   │
-│  │  • Sends in 2 batches:                                  │   │
-│  │    - Batch 1: Queries 1&2 (summary)                     │   │
-│  │    - Batch 2: Queries 3&4 (detailed with dstaddr)      │   │
+│  │    AWS Lambda (lambda-athena-query)                      │   │
+│  │  • Triggered on schedule (CloudWatch Events)             │   │
+│  │  • Executes all 4 Athena queries                         │   │
+│  │  • Retrieves results from Athena                         │   │
+│  │  • Formats data for DoitHub API                          │   │
+│  │  • Sends in 2 batches:                                   │   │
+│  │    - Batch 1: Queries 1&2 (summary)                      │   │
+│  │    - Batch 2: Queries 3&4 (detailed with dstaddr)        │   │
 │  └──────────────────────────────────────────────────────────┘   │
-│                              │                                    │
-│                              ▼                                    │
+│                              │                                  │
+│                              ▼                                  │
 │  ┌──────────────────────────────────────────────────────────┐   │
-│  │    AWS Secrets Manager                                  │   │
-│  │  • Stores DoitHub API credentials                       │   │
-│  │  • Lambda retrieves credentials securely                │   │
-│  │  • Credentials never exposed in code                    │   │
+│  │    AWS Secrets Manager                                   │   │
+│  │  • Stores DoitHub API credentials                        │   │
+│  │  • Lambda retrieves credentials securely                 │   │
+│  │  • Credentials never exposed in code                     │   │
 │  └──────────────────────────────────────────────────────────┘   │
-│                              │                                    │
-└──────────────────────────────┼────────────────────────────────────┘
+│                              │                                  │
+└──────────────────────────────┼──────────────────────────────────┘
                                │
-┌──────────────────────────────┼────────────────────────────────────┐
-│                    Output Layer                                   │
-│                              │                                    │
-│                              ▼                                    │
+┌──────────────────────────────┼──────────────────────────────────┐
+│                    Output Layer                                 │
+│                              │                                  │
+│                              ▼                                  │
 │  ┌──────────────────────────────────────────────────────────┐   │
 │  │         DoitHub API (Doit Console)                       │   │
 │  │  • Receives cost data in two batches                     │   │
-│  │  • Batch 1: "NAT Gateway usage summary"                 │   │
-│  │    - Aggregated usage and cost by NAT Gateway           │   │
-│  │    - Dimensions: account_id, nat_gateway_id, az, flow   │   │
-│  │  • Batch 2: "Nat Gateway usage top"                     │   │
-│  │    - Detailed usage with destination IP tracking        │   │
-│  │    - Dimensions: account_id, nat_gateway_id, az, flow,  │   │
-│  │      destination_ip                                     │   │
-│  │  • Stores metrics for billing analysis                  │   │
+│  │  • Batch 1: "NAT Gateway usage summary"                  │   │
+│  │    - Aggregated usage and cost by NAT Gateway            │   │
+│  │    - Dimensions: account_id, nat_gateway_id, az, flow    │   │
+│  │  • Batch 2: "Nat Gateway usage top"                      │   │
+│  │    - Detailed usage with destination IP tracking         │   │
+│  │    - Dimensions: account_id, nat_gateway_id, az, flow,   │   │
+│  │      destination_ip                                      │   │
+│  │  • Stores metrics for billing analysis                   │   │
 │  └──────────────────────────────────────────────────────────┘   │
-│                              │                                    │
-│                              ▼                                    │
+│                              │                                  │
+│                              ▼                                  │
 │  ┌──────────────────────────────────────────────────────────┐   │
-│  │    Doit Console Dashboard                               │   │
-│  │  • Visualizes NAT Gateway costs                         │   │
-│  │  • Tracks usage trends                                  │   │
-│  │  • Identifies cost optimization opportunities           │   │
-│  │  • Compares costs across NAT Gateways                   │   │
+│  │    Doit Console Dashboard                                │   │
+│  │  • Visualizes NAT Gateway costs                          │   │
+│  │  • Tracks usage trends                                   │   │
+│  │  • Identifies cost optimization opportunities            │   │
+│  │  • Compares costs across NAT Gateways                    │   │
 │  └──────────────────────────────────────────────────────────┘   │
-│                                                                   │
+│                                                                 │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
